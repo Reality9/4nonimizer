@@ -22,7 +22,7 @@ Once installed 4nonymizer, enter the command **4nonimizer help** to get the help
         \___  | | | | (_) | | | | | | | | | | |/ /  __/ |
             |_/_| |_|\___/|_| |_|_|_| |_| |_|_/___\___|_|
                                            By Carlos Antonini & Vicente Motos
-                                           Version: 1.0-beta
+                                           Version: 1.03-beta
 
 Usage: 4nonymizer **\<parameter\>**  
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**install**:  Install the script in run services  
@@ -37,6 +37,10 @@ Usage: 4nonymizer **\<parameter\>**
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**restart**: Restart the 4nonimizer service  
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**update_app**: Update this program via git  
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**privoxy**: Install and configure privoxy with port 8118 (BETA)  
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**proxychains4**: Install and configure proxychains4 for default in the system  
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**browser**: Fire up a firefox browser with profile privoxy -> tor  
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**test_availability**: Check peers availability and delete ovpn file if the IP/service is unreachable  
+  
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**help**: Help (this screen)  
 
 
@@ -56,6 +60,9 @@ Currently it supports the following VPN providers:
 
 \- VPNKeys <https://www.vpnkeys.com/>
 
+\- FreeVPN <https://freevpn.me/>
+
+\- TunnelBear <https://www.tunnelbear.com/>
 
 # Install a new VPN
 
@@ -89,7 +96,7 @@ If the VPN provider allows automation of credential and/or .ovpn files getting, 
 
 ![Alt text](./images/autovpn_sample.png)
 
-4nonimizer automatically detect the presence of both scripts and indicate (Auto-pass Login) or (Auto-get OVPN) if applicable.
+4nonimizer automatically detect the presence of both scripts and indicate (Auto-pass Login) or (Auto-get OVPN) if it finds in the first line of each file the expression '#4uto' or '#m4nual' depending on the performed actions.
 
 ![Alt text](./images/provider_new.png)
 
@@ -104,11 +111,17 @@ If the VPN provider allows automation of credential and/or .ovpn files getting, 
 \- http://www.hackplayers.com/2016/08/tuto-enmascarar-ip-linux-vpn-tor.html  
 \- http://www.hackplayers.com/2016/10/4nonimizer-un-script-para-anonimizar-ip.html  
 \- http://www.redeszone.net//2016/10/07/4nonimizer-te-permitira-automatizar-la-conexion-diferentes-vpn-anonimizar-ip/  
+\- http://www.kitploit.com/2016/10/4nonimizer-bash-script-for-anonymizing_10.html  
+\- https://www.digitalmunition.me/2016/10/4nonimizer-bash-script-anonymizing-public-ip-managing-connection-tor-different-vpns-providers/  
 
 # Versions
 
-\- 1.0-beta codename .bye-world! 5/10/2016
-
+ Number | codename | date  
+ --- | --- | ---  
+ 1.00-beta | .bye-world! | 5/10/2016    
+ 1.02-beta | .evol-time  | 11/10/2016   
+ 1.03-beta | . using-latin-i | 17/10/2016 
+ 
 ¡4nonimize the world!
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -144,7 +157,7 @@ Once installed 4nonymizer, enter the command **4nonimizer help** to get the help
         \___  | | | | (_) | | | | | | | | | | |/ /  __/ |
             |_/_| |_|\___/|_| |_|_|_| |_| |_|_/___\___|_|
                                            By Carlos Antonini & Vicente Motos
-                                           Version: 1.0-beta
+                                           Version: 1.03-beta
 
 Usage: 4nonymizer **\<parameter\>**  
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**install**:  Install the script in run services  
@@ -159,7 +172,11 @@ Usage: 4nonymizer **\<parameter\>**
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**restart**: Restart the 4nonimizer service  
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**update_app**: Update this program via git  
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**privoxy**: Install and configure privoxy with port 8118 (BETA)  
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**help**: Help (this screen)  
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**proxychains4**: Install and configure proxychains4 for default in the system  
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**browser**: Fire up a firefox browser with profile privoxy -> tor  
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**test_availability**: Check peers availability and delete ovpn file if the IP/service is unreachable  
+  
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**help**: Help (this screen)   
 
 
 
@@ -179,6 +196,9 @@ Actualmente se soportan los siguientes proveedores VPN:
 
 \- VPNKeys <https://www.vpnkeys.com/>
 
+\- FreeVPN <https://freevpn.me/>
+
+\- TunnelBear <https://www.tunnelbear.com/>
 
 
 # Instalar una nueva VPN
@@ -215,7 +235,7 @@ Si el proveedor correspondiente permite la automatización de la obtención de c
 
 ![Alt text](./images/autovpn_sample.png)
 
-4nonimizer automáticamente detectará la presencia de ambos scripts e indicará (Auto-pass Login) o (Auto-get OVPN) si procede.
+4nonimizer automáticamente detectará la presencia de ambos scripts e indicará (Auto-pass Login) o (Auto-get OVPN) si encuentra en la primera linea de cada fichero la expresión "4uto' o 'm4nual' dependiendo de la función que realicen.
 
 ![Alt text](./images/provider_new.png)
 
@@ -230,10 +250,16 @@ Si el proveedor correspondiente permite la automatización de la obtención de c
 \- http://www.hackplayers.com/2016/08/tuto-enmascarar-ip-linux-vpn-tor.html  
 \- http://www.hackplayers.com/2016/10/4nonimizer-un-script-para-anonimizar-ip.html  
 \- http://www.redeszone.net//2016/10/07/4nonimizer-te-permitira-automatizar-la-conexion-diferentes-vpn-anonimizar-ip/  
+\- http://www.kitploit.com/2016/10/4nonimizer-bash-script-for-anonymizing_10.html  
+\- https://www.digitalmunition.me/2016/10/4nonimizer-bash-script-anonymizing-public-ip-managing-connection-tor-different-vpns-providers/  
 
 # Versiones
 
-\- 1.0-beta codename .bye-world! 5/10/2016
-
+ Number | codename | date  
+ --- | --- | ---  
+ 1.00-beta | .bye-world! | 5/10/2016    
+ 1.02-beta | .evol-time  | 11/10/2016   
+ 1.03-beta | . using-latin-i | 17/10/2016 
+ 
 ¡4nonimiza el mundo!
 

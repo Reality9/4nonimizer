@@ -2,7 +2,7 @@
 # Authors: vicente motos & carlos antonini
 
 function asciilogo {
-version="1.0-beta"
+version="1.03-beta"
 
 clear
 CYAN='\e[34m'
@@ -22,14 +22,47 @@ echo -e "${RED}                                           By Carlos Antonini & V
 echo -e "${RED}                                           Version: $version${NC}"
 echo ""
 }
+
 function checkifinstalled () {
 if [  ! -f "/etc/systemd/system/multi-user.target.wants/4non.service" ]; then
 	echo -e "\n${RED}[*]${NC} You must install 4nonimizer first!\n"
 	exit 1
 fi
 }
+
+function check_ip_format () {
+    regex="\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+    echo "$1" | egrep "$regex" &>/dev/null
+    return $?
+}
+
+function get_public_ip () {
+	hash dig 2>/dev/null && {
+	    PUBLIC_IP=$(dig +short myip.opendns.com @resolver1.opendns.com)
+	}
+	
+		if check_ip_format "$PUBLIC_IP"; then
+			echo "$PUBLIC_IP"
+			exit 1
+		fi
+	
+	for curl_ip in http://ipecho.net/plain http://ipinfo.io/ip http://ifconfig.me/ip http://curlmyip.com; do
+		 PUBLIC_IP=$( curl -s $curl_ip )
+		if check_ip_format "$PUBLIC_IP"; then
+			break
+		fi
+	done
+
+	if ! check_ip_format "PUBLIC_IP"; then
+	    echo "Could not obtain your public IP address";
+	    exit 1;
+	fi
+
+	echo "$PUBLIC_IP"
+}
+
 function start () {
-	IP_provider1=$(curl icanhazip.com 2> /dev/null)
+	IP_provider1=$(get_public_ip)
 	asciilogo
 	checkifinstalled
 	echo -e "\n${GREEN}[+]${NC} Your current IP is $IP_provider1...\n"
@@ -47,7 +80,7 @@ function start () {
 			if [ $count1 -eq 30 ];  then
 				clear
 				echo -ne "\n${RED}[+]${NC} There is a problem starting openvpn. Please, check nohup.out for details\n\n"
-				current_provider=`cat /opt/4nonimizer/4nonimizer | awk 'NR==40' | awk -F';' '{print $1}' | awk -F'/' '{print $5}'`
+				current_provider=`cat /opt/4nonimizer/4nonimizer | awk 'NR==73' | awk -F';' '{print $1}' | awk -F'/' '{print $5}'`
 				tail -n 30 /opt/4nonimizer/vpn/$current_provider/nohup.out
 				echo ""
 				exit 1
@@ -86,9 +119,9 @@ function start () {
 	  fi
 	  
 	done
-	IP_provider2=$(curl icanhazip.com 2> /dev/null)
+	IP_provider2=$(get_public_ip)
 	while [ $IP_provider1 = $IP_provider2 ] ; do 
-		IP_provider2=$(curl icanhazip.com 2> /dev/null)
+		IP_provider2=$(get_public_ip)
 	done
 	vpn_status
 	echo -e "\n${GREEN}[!]${NC} All done!\n"
@@ -114,8 +147,8 @@ function stop () {
 	asciilogo
 	checkifinstalled
 	systemctl stop tor
-	ps -uax | grep log- | awk '{print $2}' | xargs kill -9
-	ps -aux | grep openvpn | awk '{print $2}' | xargs kill -9
+	ps -uax | grep log- | awk '{print $2}' | xargs kill -9 2> /dev/null
+	ps -aux | grep openvpn | awk '{print $2}' | xargs kill -9 2> /dev/null
 	ifconfig $(ifconfig | egrep -io "tun\w") down 2> /dev/null
 	echo -e "\n${GREEN}You can continue browsing using your real IP!!!${NC}\n"
 }
@@ -135,12 +168,12 @@ function install () {
 		echo -e "\n${GREEN}[+]${NC} Updating the system...\n"
 		apt-get update
 		echo -e "\n${GREEN}[+]${NC} Installing dependences...\n"
-		apt-get install curl openvpn easy-rsa libcurl4-gnutls-dev librtmp-dev proxychains tor bzip2
+		apt-get install curl openvpn easy-rsa libcurl4-gnutls-dev librtmp-dev proxychains tor bzip2 nmap dos2unix unzip
 	else if  [ `lsb_release -i | awk '{print $3}'` = ManjaroLinux ] || [ `lsb_release -i | awk '{print $3}'` = Arch ] ; then
 		echo -e "\n${GREEN}[+]${NC} Updating the system...\n"
 		pacman -Syu
 		echo -e "\n${GREEN}[+]${NC} Installing dependences...\n"
-		pacman -S --noconfirm curl openvpn easy-rsa proxychains-ng tor bzip2
+		pacman -S --noconfirm curl openvpn easy-rsa proxychains-ng tor bzip2 nmap dos2unix unzip
 	else
 		echo ""
 		echo -e "\n${RED}[*]${NC} Your distro is not supported\n"
@@ -170,7 +203,7 @@ function install () {
 	  if [ $count -eq 0 ]
 	    then
 		echo -e "\n${GREEN}[+]${NC} Obtaining Credentials and config files of default vpn (VpnBook)\n"
-	        cd /opt/4nonimizer/vpn/vpnbook && ./vpn-get-ovpn.sh && ./vpn-get-pass.sh	
+	        cd /opt/4nonimizer/vpn/vpnbook && ./vpn-get-ovpn.sh && ./vpn-get-pass.sh
 	       break
 	  fi     
 
@@ -196,40 +229,36 @@ function install () {
 function update_vpns () {
 	asciilogo
 	checkifinstalled
-	echo -e "\n${GREEN}[+]${NC} Obtaining credentials for HideMyAss\n"
-	cd /opt/4nonimizer/vpn/hidemyass && ./vpn-get-pass.sh
-	echo -e "\n${GREEN}[+]${NC} Obtaining all available ovpn files for HideMyAss\n"
-	cd /opt/4nonimizer/vpn/hidemyass && ./vpn-get-ovpn.sh
-	echo -e "\n${GREEN}[+]${NC} Obtaining credentials for TorGuard\n"
-	cd /opt/4nonimizer/vpn/torguard && ./vpn-get-pass.sh
-	echo -e "\n${GREEN}[+]${NC} Copy manually all ovpn files for TorGuard\n"
-	sleep 5
-	echo -e "\n${GREEN}[+]${NC} Obtaining all for VPNbook\n"
-	cd /opt/4nonimizer/vpn/vpnbook && ./vpn-get-ovpn.sh && ./vpn-get-pass.sh
-	echo -e "\n${GREEN}[+]${NC} Obtaining all for VPNgate\n"
-	cd /opt/4nonimizer/vpn/vpngate && ./vpn-get-pass.sh
-	cd /opt/4nonimizer/vpn/vpngate && ./vpn-get-ovpn.sh	
-	echo -e "\n${GREEN}[+]${NC} Obtaining credentials for vpnkeys\n"
-	cd /opt/4nonimizer/vpn/vpnkeys && ./vpn-get-pass.sh
-	echo -e "\n${GREEN}[+]${NC} Copy manually all ovpn files for vpnkeys\n"
-	sleep 5
-	echo -e "\n${GREEN}[+]${NC} Obtaining credentials for vpnme\n"
-	cd /opt/4nonimizer/vpn/vpnme && ./vpn-get-pass.sh
-	echo -e "\n${GREEN}[+]${NC} Copy manually all ovpn files for vpnme\n"
-	sleep 5
+	num=0
+	for lista in $(ls /opt/4nonimizer/vpn/); 
+		do
+			num=`expr $num + 1`
+			echo -e "\n${GREEN}[+]${NC} Obtaining credentials for provider #$num: $lista\n"
+			cd /opt/4nonimizer/vpn/$lista && ./vpn-get-pass.sh
+			echo -e "\n${GREEN}[+]${NC} Obtaining available ovpn files for provider #$num: $lista\n"
+			cd /opt/4nonimizer/vpn/$lista && ./vpn-get-ovpn.sh
+			LISTADO[$num]=$lista
+	done
+	 echo -e "\n${Green} All VPNs have been configured\n"
+	 echo -e "\n${Red} Consider check availability of provider nodes executing '4nonimizer test_availability'\n"
+
 }
 
 function vpn_list () {
 	num=0
 	echo -e "\n${Green} List of available VPN providers\n"
+	autokey="#4uto"
 	for lista in $(ls /opt/4nonimizer/vpn/); 
 		do
 			num=`expr $num + 1`
-			if [ -f /opt/4nonimizer/vpn/$lista/vpn-get-ovpn.sh ] && [ -f /opt/4nonimizer/vpn/$lista/vpn-get-pass.sh ]; then
+			fileovpns=$(head -n1 /opt/4nonimizer/vpn/$lista/vpn-get-ovpn.sh)
+			filecreds=$(head -n1 /opt/4nonimizer/vpn/$lista/vpn-get-pass.sh)
+			cd /opt/4nonimizer/vpn/$lista
+			if  [ "$autokey" == "$fileovpns" ] && [ "$autokey" == "$filecreds" ] ; then
 				echo "["$num"] - "$lista "(Auto-get OVPN) (Auto-pass Login)"
-			elif [ -f /opt/4nonimizer/vpn/$lista/vpn-get-pass.sh ]; then
+			elif [ "$autokey" == "$filecreds" ] ; then
 				echo "["$num"] - "$lista "(Auto-pass Login)"
-			elif [ -f /opt/4nonimizer/vpn/$lista/vpn-get-ovpn.sh ]; then
+			elif [ "$autokey" == "$fileovpns" ] ; then
 				echo "["$num"] - "$lista "(Auto-get OVPN)"
 			else
 				echo "["$num"] - "$lista 
@@ -244,7 +273,7 @@ function change_provider () {
 	if [ ! -d "/opt/4nonimizer/vpn/" ]; then
 		echo -e "\n${RED} Install 4nonimizer first! (./4nonimizer install)\n${NC}"
 	else				
-		current_provider=`cat /opt/4nonimizer/4nonimizer | awk 'NR==40' | awk -F';' '{print $1}' | awk -F'/' '{print $5}'`
+		current_provider=`cat /opt/4nonimizer/4nonimizer | awk 'NR==73' | awk -F';' '{print $1}' | awk -F'/' '{print $5}'`
 		echo -e "\n${GREEN} Currently you're using the $current_provider provider\n${NC}"
 		echo -e "\n${GREEN} Select the new VPN provider to change\n${NC}"
 		vpn_list
@@ -260,18 +289,18 @@ function change_provider () {
 			exit 1
 		fi
 		if [ "$new" -lt "$num" ] ; then
-			old=`cat /opt/4nonimizer/4nonimizer | awk 'NR==40' | awk -F';' '{print $1}' | awk -F'/' '{print $5}'`
+			old=`cat /opt/4nonimizer/4nonimizer | awk 'NR==73' | awk -F';' '{print $1}' | awk -F'/' '{print $5}'`
 			echo ""
 			echo -e "${GREEN}[+]${NC} Changing vpn $old to ${LISTADO[$new]} ..."
-			sed -i '40 s/'$old'/'${LISTADO[$new]}'/g' /opt/4nonimizer/4nonimizer
+			sed -i '73 s/'$old'/'${LISTADO[$new]}'/g' /opt/4nonimizer/4nonimizer
 			sleep 1
 			systemctl stop 4non.service
-			IP_provider1=$(curl icanhazip.com 2> /dev/null)
+			IP_provider1=$(get_public_ip)
 			systemctl start 4non.service
 			for i in {0..5..1}; do echo -en "."; sleep 1;  done
-			IP_provider2=$(curl icanhazip.com 2> /dev/null)
+			IP_provider2=$(get_public_ip)
 			while [ $IP_provider1 = $IP_provider2 ] ; do 
-				IP_provider2=$(curl icanhazip.com 2> /dev/null)
+				IP_provider2=$(get_public_ip)
  			done
 			#systemctl status 4non.service
 			vpn_status
@@ -286,14 +315,14 @@ function change_ip () {
 	asciilogo
 	checkifinstalled
 	killall openvpn
-	cd /opt/4nonimizer/vpn/$(cat /opt/4nonimizer/4nonimizer | awk 'NR==40' | awk -F';' '{print $1}' | awk -F'/' '{print $5}')/ ; nohup openvpn $(ls *.ovpn | shuf -n 1 ) 2> /dev/null &  	
+	cd /opt/4nonimizer/vpn/$(cat /opt/4nonimizer/4nonimizer | awk 'NR==73' | awk -F';' '{print $1}' | awk -F'/' '{print $5}')/ ; nohup openvpn $(ls *.ovpn | shuf -n 1 ) 2> /dev/null &  	
 	echo -e "\n${GREEN}[+]${NC} Changing vpn IP Address ...\n"
-	IP_provider1=$(curl icanhazip.com 2> /dev/null)
+	IP_provider1=$(get_public_ip)
 	for i in {0..5..1}; do echo -en "."; sleep 1;  done
 	systemctl start 4non.service
-	IP_provider2=$(curl icanhazip.com 2> /dev/null)
+	IP_provider2=$(get_public_ip)
 	while [ $IP_provider1 = $IP_provider2 ] ; do 
-		IP_provider2=$(curl icanhazip.com 2> /dev/null)
+		IP_provider2=$(get_public_ip)
 	done
         vpn_status
         echo -e "\n${GREEN}[!]${NC} Done!"
@@ -314,7 +343,9 @@ function uninstall () {
 }
 
 function reinstall () {
+	stop
 	uninstall
+	cd /opt/
 	git clone https://github.com/Hackplayers/4nonimizer.git
 	install
 }
@@ -323,7 +354,7 @@ function start_logs_vpn () {
 #	IPREAL=172.124.22.55
 	SECS=300
 	sleep 5
-	IPVPN=$(curl icanhazip.com 2> /dev/null)
+	IPVPN=$(get_public_ip)
 
 #	if [ $IPREAL == $IPVPN ] || [ $IPREAL == $IPTOR ]; then
 #	        ifconfig $(ifconfig | grep Ethernet -n3 | egrep -io "1-\w+" | awk -F'-' '{print $2}') down 2> /dev/null
@@ -339,7 +370,7 @@ function start_logs_vpn () {
 function start_logs_tor () {
 	SECS=300
 	sleep 5
-	IPTOR=$(proxychains curl icanhazip.com 2> /dev/null)
+	IPTOR=$(proxychains curl ipecho.net/plain 2> /dev/null)
 	cd /opt/4nonimizer/logs; ls /opt/4nonimizer/logs/ | egrep -v "`date "+%d-%m-%Y"`.log$" | egrep -v "*.bz2" | xargs bzip2 2> /dev/null
 	while true;do echo $IPTOR = `date` >> /opt/4nonimizer/logs/log-tor-`date +'%d-%m-%Y'`.log && sleep $SECS ; done &
 }
@@ -364,11 +395,11 @@ function vpn_status () {
 	read -s -n 1 -t 1 key  
 	  if [ "$key" == "T" ]; then	
 		echo -e "\n${GREEN}[*]${NC} Checking IP assigned:\n"
-		echo -e "VPN Provider: \t $(cat /opt/4nonimizer/4nonimizer | awk 'NR==40' | awk -F';' '{print $1}' | awk -F'/' '{print $5}')"
-		echo -e "IP: \t\t$(curl -s icanhazip.com)"
+		echo -e "VPN Provider: \t $(cat /opt/4nonimizer/4nonimizer | awk 'NR==73' | awk -F';' '{print $1}' | awk -F'/' '{print $5}')"
+		echo -e "IP: \t\t$(curl -s ipecho.net/plain)"
 		echo -e "Country:\t$(curl -s http://whatismycountry.com/ | sed -n 's|.*,\(.*\)</h3>|\1|p')"
 		echo  -e "\nTOR (using proxychains):"
-		proxychains  curl -s icanhazip.com 2> /dev/null
+		proxychains  curl -s ipecho.net/plain 2> /dev/null
 		proxychains  curl -s http://whatismycountry.com/ 2>/dev/null | sed -n 's|.*,\(.*\)</h3>|\1|p'
 		break
 	  fi
@@ -381,8 +412,8 @@ function vpn_status () {
 			exit 1
 		else 
 			echo -e "\n${GREEN}[*]${NC} Checking IP assigned:\n"
-			echo -e "VPN Provider: \t $(cat /opt/4nonimizer/4nonimizer | awk 'NR==40' | awk -F';' '{print $1}' | awk -F'/' '{print $5}')"
-			echo -e "IP: \t\t$(curl -s icanhazip.com)"
+			echo -e "VPN Provider: \t $(cat /opt/4nonimizer/4nonimizer | awk 'NR==73' | awk -F';' '{print $1}' | awk -F'/' '{print $5}')"
+			echo -e "IP: \t\t$(curl -s ipecho.net/plain)"
 			echo -e "Country:\t$(curl -s http://whatismycountry.com/ | sed -n 's|.*,\(.*\)</h3>|\1|p')"
 			break
 		fi
@@ -412,21 +443,117 @@ function privoxy ()
 	echo -e "\n${RED}[*]THIS FUNCTIONALITY IS BETA MAY CONTAIN ERRORS${NC}\n"
 	checkifinstalled
 	if [ `lsb_release -i | awk '{print $3}'` = Kali ] || [ `lsb_release -i | awk '{print $3}'` = Ubuntu ] || [ `lsb_release -i | awk '{print $3}'` = Debian ] ; then
-		if [  -f "/etc/systemd/system/multi-user.target.wants/4non.service" ]; then
+		if [  -f "/etc/privoxy/config" ]; then
 			/usr/sbin/privoxy /etc/privoxy/config
 			systemctl enable privoxy.service
 			netstat -putona | grep -v grep | grep privoxy --color
+			sed -i '/forward-socks5t \/ 127.0.0.1:9050 ./d' /etc/privoxy/config
+			sed -i '$a forward-socks5t / 127.0.0.1:9050 .' /etc/privoxy/config
 		else
 			apt-get install privoxy
 			/usr/sbin/privoxy /etc/privoxy/config
 			systemctl enable privoxy.service
 			netstat -putona | grep -v grep | grep privoxy --color
+			sed -i '/forward-socks5t \/ 127.0.0.1:9050 ./d' /etc/privoxy/config
+			sed -i '$a forward-socks5t / 127.0.0.1:9050 .' /etc/privoxy/config
 		fi
 	else
                 echo ""
                 echo -e "\n${RED}[*]${NC} Your distro is not supported\n"
                 exit 1
         fi
+}
+
+function proxychains4 () 
+{
+	asciilogo
+	checkifinstalled
+	if [ `lsb_release -i | awk '{print $3}'` = Kali ] || [ `lsb_release -i | awk '{print $3}'` = Ubuntu ] || [ `lsb_release -i | awk '{print $3}'` = Debian ] ; then
+	echo -e "\n${GREEN}[!]${NC}Uninstall Proxychains3\n"
+	apt-get autoremove proxychains --purge
+	echo -e "\n${GREEN}[!]${NC}Installing Proxychains4\n"
+	mkdir /opt/4nonimizer/dependences && cd /opt/4nonimizer/dependences
+	git clone https://github.com/rofl0r/proxychains-ng.git	
+	cd proxychains-ng 
+	./configure --prefix=/usr --sysconfdir=/etc
+	make
+	make install
+	make install-config
+	mv /usr/bin/proxychains4 /usr/bin/proxychains
+	echo -e "\n${GREEN}[!]${NC}Done!\n"
+	else
+		echo ""
+                echo -e "\n${RED}[*]${NC} Your distro is not supported\n"
+                exit 1
+	fi
+}
+
+function browser () 
+{
+	asciilogo
+	checkifinstalled
+	privoxy
+	cd /opt/4nonimizer/profiles/
+	systemctl start tor
+	cp /opt/4nonimizer/profiles/rdpy967e.4nonimizer-profile.tar.gz /root/.mozilla/firefox/ 2> /dev/null
+	cp /opt/4nonimizer/profiles/profiles.ini /root/.mozilla/firefox/ 2> /dev/null
+	cd /root/.mozilla/firefox 2> /dev/null
+	tar xvzf rdpy967e.4nonimizer-profile.tar.gz 2> /dev/null 
+	rm -rf rdpy967e.4nonimizer-profile.tar.gz 2> /dev/null
+	firefox -P 4nonimizer-profile --private-window ipecho.net/plain 2> /dev/null
+}
+
+function test_availability () 
+{
+	asciilogo
+	checkifinstalled
+	num=0
+	for lista in $(ls /opt/4nonimizer/vpn/); 
+		do
+			cd /opt/4nonimizer/vpn/$lista
+			echo -e "\n${GREEN}[+]${NC} checking VPN peers availability of provider $lista\n"
+			if ! ping -q -c 1 -W 1 8.8.8.8 >/dev/null; then
+				echo -e "\n${RED}[*]${NC} You do not have connection to Internet now! Please check it before testing ovpns.\n"
+				exit 1
+			fi
+			cd /opt/4nonimizer/vpn/$lista
+			dos2unix * &> /dev/null
+			for file in $(ls *.ovpn)
+			do
+				checkedprotocol=$(grep -v '#' $file | grep -m 1 proto | awk '{print $2}')
+				checkedip=$(grep -v '#' $file | grep -m 1 remote | awk '{print $2}')
+				checkedport=$(grep -v '#' $file | grep -m 1 remote | awk '{print $3}')
+				if [[ $checkedprotocol = *"tcp"* ]]
+				then
+				#option 1
+				#result=$(nc -zv -w3 $checkedip $checkedport 2>&1 | grep succeeded);
+				#if [ -n "$result" ]; then
+				#option 2
+				#</dev/tcp/$checkedip/$checkedport
+				#if [ "$?" -ne 0 ]; then
+				#option 3
+				open=`nmap -p $checkedport $checkedip  | grep "$checkedport" | grep open`
+				if [ -z "$open" ]; then
+					echo "KO! The peer $checkedip in port $checkedport/$checkedprotocol is NOT available. The $file will be deleted."
+					rm $file
+				else
+					echo "Ok! The peer $checkedip in port $checkedport/$checkedprotocol is available"
+				fi
+				fi
+				if [[ $checkedprotocol = *"udp"* ]]
+				then
+				open=`nmap -sU -p $checkedport $checkedip  | grep "$checkedport" | grep open`
+				if [ -z "$open" ]; then
+					echo "KO! The peer $checkedip in port $checkedport/$checkedprotocol is NOT available. The $file will be deleted."
+				        rm $file
+				else
+				        echo "Ok! The peer $checkedip in port $checkedport/$checkedprotocol is available"
+			        fi
+				fi
+			done
+	done
+
+	 echo -e "\n${Green} The VPN peers availability have been checked\n"
 }
 
 # main exec
@@ -438,25 +565,28 @@ if [ `id | egrep -io "uid=\w+" | awk -F'=' '{print $2}'` != 0 ] ; then
 else
 
 case $1 in
-	        start|stop|stop_nonet|install|reinstall|uninstall|change_provider|change_ip|restart|update_vpns|update_app|vpn_status|privoxy)
+	        start|stop|stop_nonet|install|reinstall|uninstall|change_provider|change_ip|restart|update_vpns|update_app|vpn_status|privoxy|proxychains4|browser|test_availability)
 		"$1" 
 		;;
 		help|-h|--help)
 		echo "Usage: 4nonymizer <parameter>"
 		echo -e "Example:  4nonimizer ${CYAN}install${NC}"
 		echo ""
-		echo -e "    ${CYAN}install${NC}:  Install the script in run services"
+		echo -e "    ${CYAN}install${NC}:  Install the script in /opt/4nonimizer and in running services"
 		echo -e "    ${CYAN}uninstall${NC}: Disable run service and remove app directory"
 		echo -e "    ${CYAN}change_provider${NC}: Change VPN Provider"
-		echo -e "    ${CYAN}change_ip${NC}: Change IP from VPN current"
-		echo -e "    ${CYAN}vpn_status${NC}: Check IP and provider VPN running"
+		echo -e "    ${CYAN}change_ip${NC}: Change IP from current VPN provider"
+		echo -e "    ${CYAN}vpn_status${NC}: Check IP and running VPN provider"
 		echo -e "    ${CYAN}update_vpns${NC}: Update all ovpn of VPNs"
 		echo -e "    ${CYAN}start${NC}: Init the 4nonimizer service"
 		echo -e "    ${CYAN}stop${NC}: Stop the 4nonimizer service"
 		echo -e "    ${CYAN}stop_nonet${NC}: Stop the 4nonimizer service and shutdown network interfaces"
 		echo -e "    ${CYAN}restart${NC}: Restart the 4nonimizer service"
 		echo -e "    ${CYAN}update_app${NC}: Update this program via git"
-		echo -e "    ${CYAN}privoxy${NC}: Install and configure privoxy with port 8118 (BETA)"
+		echo -e "    ${CYAN}privoxy${NC}: Install and configure privoxy on port 8118 (BETA)"
+		echo -e "    ${CYAN}proxychains4${NC}: Install and configure proxychains4 by default in the system"
+		echo -e "    ${CYAN}browser${NC}: Fire up a firefox browser with profile privoxy -> tor"
+		echo -e "    ${CYAN}test_availability${NC}: Check peers availability and delete ovpn file if the IP/service is unreachable"
 		echo -e "    ${CYAN}help${NC}: Help (this screen)"
 		
 		echo "" 
